@@ -1,0 +1,19 @@
+services:
+  hanako:
+    build: .
+    container_name: hanako
+    ports:
+      - "${HANA_PORT:-3000}:3000"
+    volumes:
+      - hanako_data:/data
+    environment:
+      - HANA_HOST=0.0.0.0
+      - HANA_PORT=3000
+      - HANA_SERVE_WEB=1
+      - HANA_TOKEN=${HANA_TOKEN:-}
+      - HANA_CORS_ORIGIN=${HANA_CORS_ORIGIN:-}
+    restart: unless-stopped
+
+volumes:
+  hanako_data:
+    driver: local

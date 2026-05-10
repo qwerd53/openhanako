@@ -46,6 +46,8 @@
     "dist:linux": "npm run build:server && npm run build:client && electron-builder --linux AppImage deb",
     "test": "vitest run --exclude '**/.claude/**' --exclude '**/.cache/**' --exclude '**/dist/**' --exclude '**/dist-server/**' --exclude '**/dist-computer-use/**' --exclude '**/dist-sandbox/**'",
     "build:server": "node scripts/build-server.mjs",
+    "build:web": "vite build --config vite.config.web.js && vite build --config vite.config.web-theme.js",
+    "server:web": "HANA_HOST=0.0.0.0 HANA_SERVE_WEB=1 HANA_CORS_ORIGIN=http://localhost node server/index.js",
     "lint": "eslint .",
     "test:watch": "vitest --exclude '**/.claude/**' --exclude '**/.cache/**' --exclude '**/dist/**' --exclude '**/dist-server/**' --exclude '**/dist-computer-use/**' --exclude '**/dist-sandbox/**'",
     "postinstall": "node scripts/patch-pi-sdk.cjs"

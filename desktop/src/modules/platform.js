@@ -25,8 +25,9 @@
   }
 
   window.platform = {
-    // 服务器连接
-    getServerPort: async () => location.port || "3000",
+    // 服务器连接（web 模式下从 location 取实际端口和主机）
+    getServerPort: async () => location.port || (location.protocol === "https:" ? "443" : "80"),
+    getServerHost: async () => location.hostname,
     getServerToken: async () => token,
     appReady: async () => {},
     syncWindowTheme: () => {},
