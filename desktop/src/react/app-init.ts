@@ -74,7 +74,8 @@ export async function initApp(): Promise<void> {
   // 1. 获取 server 连接信息并存入 Zustand
   const serverPort = await platform.getServerPort();
   const serverToken = await platform.getServerToken();
-  const activeServerConnection = createLocalServerConnection({ serverPort, serverToken });
+  const serverHost = await platform.getServerHost?.();
+  const activeServerConnection = createLocalServerConnection({ serverPort, serverToken, serverHost });
   useStore.setState({ serverPort, serverToken, activeServerConnection });
 
   if (!activeServerConnection) {

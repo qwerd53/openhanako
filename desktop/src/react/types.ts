@@ -201,6 +201,7 @@ export interface PluginUiHostCapabilityGrant {
 // ── Platform API 类型声明 ──
 export interface PlatformApi {
   getServerPort(): Promise<string>;
+  getServerHost?(): Promise<string>;
   getServerToken(): Promise<string>;
   runEditCommand?(command: 'cut' | 'copy' | 'paste' | 'selectAll'): Promise<boolean>;
   openSettings(tab?: string): void;

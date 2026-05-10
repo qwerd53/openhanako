@@ -158,6 +158,11 @@ app.use("*", async (c, next) => {
   c.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
   if (c.req.method === "OPTIONS") return c.text("", 204);
 
+  // Static assets and SPA routes are public; only API/WS require auth
+  const p = c.req.path;
+  const needsAuth = p.startsWith("/api/") || p === "/ws" || p === "/internal/browser";
+  if (!needsAuth) return await next();
+
   // 验证 token（WebSocket 升级请求通过 URL 参数传 token，在 chat.js 中校验）
   const token = c.req.header("authorization")?.replace("Bearer ", "")
     || c.req.query("token");
@@ -505,9 +510,72 @@ app.post("/api/shutdown", async (c) => {
   return c.json({ ok: true });
 });
 
+// ── Web 前端静态文件服务（HANA_SERVE_WEB=1 时启用）──
+const serveWeb = process.env.HANA_SERVE_WEB === "1";
+const webDistPath = serveWeb ? fromRoot("dist-web") : null;
+if (serveWeb && webDistPath && fs.existsSync(webDistPath)) {
+  console.log("[server] Web frontend enabled, serving from", webDistPath);
+
+  const MIME: Record<string, string> = {
+    ".html": "text/html; charset=utf-8",
+    ".js": "application/javascript; charset=utf-8",
+    ".mjs": "application/javascript; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+    ".json": "application/json; charset=utf-8",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".gif": "image/gif",
+    ".svg": "image/svg+xml",
+    ".ico": "image/x-icon",
+    ".woff": "font/woff",
+    ".woff2": "font/woff2",
+    ".ttf": "font/ttf",
+    ".eot": "application/vnd.ms-fontobject",
+    ".map": "application/json",
+    ".txt": "text/plain; charset=utf-8",
+    ".xml": "application/xml",
+    ".webp": "image/webp",
+    ".mp4": "video/mp4",
+    ".webm": "video/webm",
+  };
+
+  app.get("*", async (c) => {
+    const reqPath = c.req.path === "/" ? "/web.html" : c.req.path;
+    const safePath = path.normalize(reqPath).replace(/^(\.\.[\/\\])+/, "");
+    const filePath = path.join(webDistPath, safePath);
+
+    if (!filePath.startsWith(webDistPath)) {
+      return c.text("forbidden", 403);
+    }
+
+    let ext = path.extname(filePath).toLowerCase();
+    if (!MIME[ext]) ext = ".html";
+
+    try {
+      if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+        const content = fs.readFileSync(filePath);
+        c.header("Content-Type", MIME[ext] || "application/octet-stream");
+        if (ext !== ".html") {
+          c.header("Cache-Control", "public, max-age=31536000, immutable");
+        }
+        return c.body(content);
+      }
+    } catch { /* fall through to SPA fallback */ }
+
+    try {
+      const indexHtml = fs.readFileSync(path.join(webDistPath, "web.html"), "utf-8");
+      c.header("Content-Type", "text/html; charset=utf-8");
+      return c.html(indexHtml);
+    } catch {
+      return c.text("Web frontend not found. Run: npm run build:web", 404);
+    }
+  });
+}
+
 // ── 启动服务器 ──
 const port = parseInt(process.env.HANA_PORT) || 0; // 0 = OS 分配
-const host = "127.0.0.1";
+const host = process.env.HANA_HOST || "127.0.0.1"; // HANA_HOST=0.0.0.0 for remote access
 
 let server;
 try {
@@ -620,6 +688,9 @@ try {
 
   // 通知就绪（server-info.json 已在上方写入，无需额外动作）
   console.log(`[server] ready: port=${actualPort}`);
+  if (serveWeb) {
+    console.log(`[server] Web GUI: http://localhost:${actualPort}?token=${SERVER_TOKEN}`);
+  }
 
   // Bridge 平台依赖不属于 HTTP readiness 的前置条件。先让桌面端拿到
   // server-info，再在后台加载外部平台 adapter，避免 Windows 上依赖加载

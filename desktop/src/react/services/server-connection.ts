@@ -91,19 +91,23 @@ function headersToRecord(headers: HeadersInit | undefined): Record<string, strin
 export function createLocalServerConnection({
   serverPort,
   serverToken,
+  serverHost,
 }: {
   serverPort: string | number | null | undefined;
   serverToken?: string | null;
+  serverHost?: string | null;
 }): ServerConnection | null {
   const port = normalizePort(serverPort);
   if (!port) return null;
+
+  const host = serverHost || "127.0.0.1";
 
   return {
     serverId: 'local',
     spaceId: 'local',
     label: 'Local Hana',
-    baseUrl: `http://127.0.0.1:${port}`,
-    wsUrl: `ws://127.0.0.1:${port}`,
+    baseUrl: `http://${host}:${port}`,
+    wsUrl: `ws://${host}:${port}`,
     token: normalizeToken(serverToken),
     authState: 'paired',
     trustState: 'local',
